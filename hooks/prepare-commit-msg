@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+import sys, os, re
+from subprocess import check_output
+
+# Collect the parameters
+commit_msg_filepath = sys.argv[1]
+if len(sys.argv) > 2:
+    commit_type = sys.argv[2]
+else:
+    commit_type = ''
+if len(sys.argv) > 3:
+    commit_hash = sys.argv[3]
+else:
+    commit_hash = ''
+
+print("prepare-commit-msg: \nFile: %s\nType: %s\nHash: %s" % (commit_msg_filepath, commit_type, commit_hash))
+
+# Figure out which branch we're on
+branch = check_output(['git', 'symbolic-ref', '--short', 'HEAD']).strip().decode()
+print("prepare-commit-msg: On branch '%s'" % branch)
+
+
+def get_issue_name(branch: str):
+    result = re.match('([A-z]+-\d+)-([A-z]+)-([A-z_\-]+)', branch)
+
+    if result is None:
+        return None
+
+    return result.group(1).upper()
+
+
+# Populate the commit message with the issue #, if there is one
+issue_name = get_issue_name(branch)
+if issue_name is None:
+    print("prepare-commit-msg: branch name '%s' is wrong" % branch)
+    exit(1)
+
+print("prepare-commit-msg: Oh hey, it's an issue branch.")
+
+with open(commit_msg_filepath, 'r+') as f:
+    content = f.read()
+    f.seek(0, 0)
+    f.write("%s - %s" % (issue_name, content))
